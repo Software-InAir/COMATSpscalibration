@@ -8,6 +8,12 @@ from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QApplicat
 
 from California_InstrumentWorker import CaliforniaInstrumentWorker
 
+
+phaseA = 0
+phaseB = 0
+phaseC = 0
+
+
 USE_INSTRUMENT = False
 
 if USE_INSTRUMENT:
@@ -19,22 +25,22 @@ if USE_INSTRUMENT:
     #################################### Initialize Phase A ####################
     my_instrument.write('INST:NSEL 1')
     my_instrument.write('SOUR:VOLT 115')
-    my_instrument.write('SOUR:CURR 7')
+    #my_instrument.write('SOUR:CURR 7')
 
     #################################### Initialize Phase B ####################
     my_instrument.write('INST:NSEL 2')
     my_instrument.write('SOUR:VOLT 115')
-    my_instrument.write('SOUR:CURR 7')
+    #my_instrument.write('SOUR:CURR 7')
 
     #################################### Initialize Phase C ####################
     my_instrument.write('INST:NSEL 3')
     my_instrument.write('SOUR:VOLT 115')
-    my_instrument.write('SOUR:CURR 7')
+    #my_instrument.write('SOUR:CURR 7')
 
     ################################### Initialize Frequency ##################
     my_instrument.write('SOUR:FREQ 400')
 
-    my_instrument.write('OUTP ON')
+    my_instrument.write('OUTP OFF')
 
 
 class Worker(QObject):
@@ -55,6 +61,8 @@ class California(QMainWindow):
         self.instrument = instrument_worker
         self.setWindowTitle("California Instruments")
         self.setFixedSize(1280, 635)
+
+        self.on = 0
 
 
         self.california = QWidget()
@@ -185,15 +193,12 @@ class California(QMainWindow):
         self.phaseACurrent.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.currentALayout.addWidget(self.phaseACurrent)
 
-        self.setPhaseACurrentInput = QLineEdit()
-        self.setPhaseACurrentInput.setPlaceholderText("...Set value for Phase A")
-        self.currentALayout.addWidget(self.setPhaseACurrentInput)
 
-        self.confirmPhaseACurrent = QPushButton("Set")
+        self.confirmPhaseACurrent = QPushButton("Phase A Average")
         self.confirmPhaseACurrent.setStyleSheet(""
                                          "background-color: rgb(0, 200, 50);"
                                          "color: rgb(255, 255, 255);")
-        self.confirmPhaseACurrent.clicked.connect(self.PhaseACurrentSet)
+        self.confirmPhaseACurrent.clicked.connect(self.PhaseACurrentAverage)
         self.currentALayout.addWidget(self.confirmPhaseACurrent)
 
         self.currentLayout.addLayout(self.currentALayout)
@@ -204,15 +209,12 @@ class California(QMainWindow):
         self.phaseBCurrent.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.currentBLayout.addWidget(self.phaseBCurrent)
 
-        self.setPhaseBCurrentInput = QLineEdit()
-        self.setPhaseBCurrentInput.setPlaceholderText("...Set value for Phase B")
-        self.currentBLayout.addWidget(self.setPhaseBCurrentInput)
 
-        self.confirmPhaseBCurrent = QPushButton("Set")
+        self.confirmPhaseBCurrent = QPushButton("Phase B Average")
         self.confirmPhaseBCurrent.setStyleSheet(""
                                          "background-color: rgb(0, 200, 50);"
                                          "color: rgb(255, 255, 255);")
-        self.confirmPhaseBCurrent.clicked.connect(self.PhaseBCurrentSet)
+        self.confirmPhaseBCurrent.clicked.connect(self.PhaseBCurrentAverage)
         self.currentBLayout.addWidget(self.confirmPhaseBCurrent)
 
         self.currentLayout.addLayout(self.currentBLayout)
@@ -223,22 +225,23 @@ class California(QMainWindow):
         self.phaseCCurrent.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.currentCLayout.addWidget(self.phaseCCurrent)
 
-        self.setPhaseCCurrentInput = QLineEdit()
-        self.setPhaseCCurrentInput.setPlaceholderText("...Set value for Phase B")
-        self.currentCLayout.addWidget(self.setPhaseCCurrentInput)
 
-        self.confirmPhaseCCurrent = QPushButton("Set")
+        self.confirmPhaseCCurrent = QPushButton("Phase C Average")
         self.confirmPhaseCCurrent.setStyleSheet(""
                                          "background-color: rgb(0, 200, 50);"
                                          "color: rgb(255, 255, 255);")
-        self.confirmPhaseCCurrent.clicked.connect(self.PhaseCCurrentSet)
+        self.confirmPhaseCCurrent.clicked.connect(self.PhaseCCurrentAverage)
         self.currentCLayout.addWidget(self.confirmPhaseCCurrent)
 
         self.currentLayout.addLayout(self.currentCLayout)
 
+        self.leftLayout.addLayout(self.currentLayout)
+
+        self.leftLayout.addStretch(1)
+
         self.bodyLayout.addLayout(self.leftLayout)
 
-        self.leftLayout.addLayout(self.currentLayout)
+
 
         ############################################### End CURRENT SET ######
 
@@ -315,9 +318,48 @@ class California(QMainWindow):
 
         self.voltageLayout.addLayout(self.voltageCLayout)
 
+        self.middleLayout.addLayout(self.voltageLayout)
+
+        middlespacer = QSpacerItem(0, 50)
+        self.middleLayout.addSpacerItem(middlespacer)
+
+        self.testStandClassificationLayout = QHBoxLayout()
+
+        self.standName = 0
+
+        self.testStand = QLabel(f"Test Stand: {self.standName} ")
+        self.testStand.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.testStandClassificationLayout.addWidget(self.testStand)
+
+        self.testStandName = QLineEdit()
+        self.testStandName.setPlaceholderText("...Enter test stand ID")
+        self.testStandName.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.testStandClassificationLayout.addWidget(self.testStandName)
+
+        self.enterTestStand = QPushButton("Set")
+        self.enterTestStand.setStyleSheet(""
+                                          "background-color: rgb(0, 200, 50);"
+                                          "color: rgb(255, 255, 255);")
+        self.enterTestStand.clicked.connect(self.TestStandID)
+        self.testStandClassificationLayout.addWidget(self.enterTestStand)
+
+        self.middleLayout.addLayout(self.testStandClassificationLayout)
+
+        self.storeVoltages = QPushButton("Store Voltages")
+        self.storeVoltages.setFixedWidth(200)
+        self.storeVoltages.setFixedHeight(50)
+        self.storeVoltages.setStyleSheet(""
+                                         "background-color: rgb(0, 150, 0);"
+                                         "color: rgb(255, 255, 255);")
+
+        self.storeVoltages.clicked.connect(self.WriteVoltages)
+        self.middleLayout.addWidget(self.storeVoltages, alignment=Qt.AlignmentFlag.AlignCenter)
+
+
+
         self.bodyLayout.addLayout(self.middleLayout)
 
-        self.middleLayout.addLayout(self.voltageLayout)
+
 
 ################################################ END OF VOLTAGE SET ##################
 
@@ -348,7 +390,28 @@ class California(QMainWindow):
         self.confirmFrequency.clicked.connect(self.FrequencySet)
         self.frequencyLayout.addWidget(self.confirmFrequency)
 
+
+
         self.rightLayout.addLayout(self.frequencyLayout)
+
+
+
+        self.outputButton = QPushButton("Output ON/OFF")
+        self.outputButton.setFixedWidth(100)
+        self.outputButton.setFixedHeight(100)
+
+        self.outputButton.setStyleSheet(""
+                                        "background-color: rgb(200, 0, 0);"
+                                        "color: rgb(255, 255, 255);"
+                                        "font-weight: bold;")
+
+        self.outputButton.clicked.connect(self.OutputSwitch)
+
+        rightspacer = QSpacerItem(0, 50)
+        self.rightLayout.addSpacerItem(rightspacer)
+
+        self.rightLayout.addWidget(self.outputButton, alignment=Qt.AlignmentFlag.AlignCenter)
+
         self.rightLayout.addStretch(1)
         self.bodyLayout.addLayout(self.rightLayout)
 
@@ -356,29 +419,19 @@ class California(QMainWindow):
 
         ############################################### END OF FREQUENCY SET ################
 
-        self.storeVoltages = QPushButton("Store Voltages")
-        self.storeVoltages.setFixedWidth(200)
-        self.storeVoltages.setFixedHeight(50)
-        self.storeVoltages.setStyleSheet(""
-                                         "background-color: rgb(0, 150, 0);"
-                                         "color: rgb(255, 255, 255);")
-
-        self.storeVoltages.clicked.connect(self.WriteVoltages)
-        self.californiaLayout.addWidget(self.storeVoltages, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        self.californiaLayout.addStretch(1)
+        bodyspacer2 = QSpacerItem(0, 100)
+        self.bodyLayout.addSpacerItem(bodyspacer2)
 
 
-        self.californiaLayout.addStretch(1)
 
         self.backButton = QPushButton("Back")
         self.backButton.setStyleSheet(""
                            "background-color: rgb(255, 0, 0);"
                            "color: rgb(255, 255, 255);"
                                       "")
-        self.backButton.setFixedWidth(400)
+        self.backButton.setFixedWidth(100)
         self.backButton.clicked.connect(self.backPressed)
-        self.californiaLayout.addWidget(self.backButton, alignment=Qt.AlignmentFlag.AlignCenter)
+        self.californiaLayout.addWidget(self.backButton, alignment=Qt.AlignmentFlag.AlignLeft)
 
         self.california.setLayout(self.californiaLayout)
 
@@ -387,26 +440,50 @@ class California(QMainWindow):
             self.instrument.ch2.connect(self.show_current2)
             self.instrument.ch3.connect(self.show_current3)
 
-    def PhaseACurrentSet(self):
-        self.aCurrent = self.setPhaseACurrentInput.text()
-        self.phaseACurrent.setText(f"Phase A Current: {self.aCurrent} A")
+    def PhaseACurrentAverage(self):
+        measuredCurrents = []
+        total = 0
+        average = 0
         if USE_INSTRUMENT:
-            my_instrument.write('INST:NSEL 1')
-            my_instrument.write(f'SOUR:CURR {self.setPhaseACurrentInput.text()}')
+            for i in range(30):
+                my_instrument.write('INST:NSEL 1')
+                measuredCurrents.append(float(my_instrument.query('MEAS:CURR?')))
+            for i in measuredCurrents:
+                total += i
 
-    def PhaseBCurrentSet(self):
-        self.bCurrent = self.setPhaseBCurrentInput.text()
-        self.phaseBCurrent.setText(f"Phase B Current: {self.bCurrent} A")
-        if USE_INSTRUMENT:
-            my_instrument.write('INST:NSEL 2')
-            my_instrument.write(f'SOUR:CURR {self.setPhaseBCurrentInput.text()}')
+            average = total / len(measuredCurrents)
 
-    def PhaseCCurrentSet(self):
-        self.cCurrent = self.setPhaseCCurrentInput.text()
-        self.phaseCCurrent.setText(f"Phase C Current: {self.cCurrent} A")
+            self.aCurrent = average
+
+    def PhaseBCurrentAverage(self):
+        measuredCurrents = []
+        total = 0
+        average = 0
         if USE_INSTRUMENT:
-            my_instrument.write('INST:NSEL 3')
-            my_instrument.write(f'SOUR:CURR {self.setPhaseCCurrentInput.text()}')
+            for i in range(30):
+                my_instrument.write('INST:NSEL 2')
+                measuredCurrents.append(float(my_instrument.query('MEAS:CURR?')))
+            for i in measuredCurrents:
+                total += i
+
+            average = total / len(measuredCurrents)
+
+            self.bCurrent = average
+
+    def PhaseCCurrentAverage(self):
+        measuredCurrents = []
+        total = 0
+        average = 0
+        if USE_INSTRUMENT:
+            for i in range(30):
+                my_instrument.write('INST:NSEL 3')
+                measuredCurrents.append(float(my_instrument.query('MEAS:CURR?')))
+            for i in measuredCurrents:
+                total += i
+
+            average = total / len(measuredCurrents)
+
+            self.cCurrent = average
 
 
     def PhaseASet(self):
@@ -439,6 +516,10 @@ class California(QMainWindow):
         except Exception as e:
             print(f"error: {e}")
 
+    def TestStandID(self):
+        self.standName = int(self.testStandName.text())
+        self.testStand.setText(f"Test Stand: {self.standName}")
+
     def WriteVoltages(self):
         try:
             text = f"Phase A: {self.aVoltage}\nPhase B: {self.bVoltage}\nPhase C: {self.cVoltage}"
@@ -452,6 +533,30 @@ class California(QMainWindow):
                 f.write(text + "\n")
         except Exception as e:
             print(f"error: {e}")
+
+    def OutputSwitch(self):
+        if USE_INSTRUMENT:
+            my_instrument.write('OUTP ON')
+        self.UpdateOutputSwitch()
+
+    def UpdateOutputSwitch(self):
+        print(self.on)
+        if self.on == 0:
+            self.outputButton.setStyleSheet(""
+                                            "background-color: rgb(0, 150, 0);"
+                                            "color: rgb(255, 255, 255);")
+            self.on += 1
+            print(f"In 0: {self.on}")
+
+        elif self.on == 1:
+            self.outputButton.setStyleSheet(""
+                                            "background-color: rgb(200, 0, 0);"
+                                            "color: rgb(255, 255, 255);")
+            if USE_INSTRUMENT:
+                my_instrument.write('OUTP OFF')
+            self.on = 0
+
+
 
     @pyqtSlot(float)
     def show_current1(self, amps):
