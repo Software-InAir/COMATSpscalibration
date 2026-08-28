@@ -1,12 +1,11 @@
 import sys
 
-import PyQt6
-import pyvisa
 from PyQt6.QtCore import Qt, QThread
 from PyQt6.QtGui import QPixmap
 
-from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QApplication, QSpacerItem, QSizePolicy, \
-    QRadioButton, QHBoxLayout, QPushButton
+from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QApplication, QSpacerItem, QRadioButton, QHBoxLayout, QPushButton
+
+
 
 
 from CaliforniaInstruments import California
@@ -14,7 +13,14 @@ from California_InstrumentWorker import CaliforniaInstrumentWorker
 from Pacific_InstrumentWorker import PacificInstrumentWorker
 from PacificPowerSupply import Pacific
 
+import instruments
+
 USE_INSTRUMENT = False
+PS_ONE = False
+PS_TWO = False
+
+
+
 
 
 class MainWindow(QMainWindow):
@@ -92,7 +98,7 @@ class MainWindow(QMainWindow):
             spacer3 = QSpacerItem(0, 60)
             self.welcomeLayout.addSpacerItem(spacer3)
 
-            self.confirmbutton = QPushButton("Continue")
+            self.confirmbutton = QPushButton("Begin")
             self.confirmbutton.setFixedWidth(200)
             self.confirmbutton.setFixedHeight(200)
             self.confirmbutton.setStyleSheet(""
@@ -148,10 +154,16 @@ class MainWindow(QMainWindow):
 
             if self.PSone.isChecked():
                 print("You picked this one.")
+                PS_ONE = True
+                instruments.USE_INSTRUMENT2 = True
+                instruments.USE_INSTRUMENT3 = True
                 self.california = California(instrument_worker=self.inst_worker)
                 self.california.show()
             if self.PStwo.isChecked():
                 print("You picked thatta one.")
+                PS_TWO = True
+                instruments.USE_INSTRUMENT2 = True
+                instruments.USE_INSTRUMENT3 = True
                 self.pacific = Pacific(instrument_worker=self.inst_worker)
                 self.pacific.show()
 

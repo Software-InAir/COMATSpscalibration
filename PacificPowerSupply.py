@@ -1,12 +1,14 @@
 import sys
 
-import PyQt6
 import pyvisa
 from PyQt6.QtCore import pyqtSignal, Qt, QObject, pyqtSlot
-from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QApplication, QPushButton, QHBoxLayout, \
+from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
     QSpacerItem, QLineEdit
 
 from Pacific_InstrumentWorker import PacificInstrumentWorker
+
+import instruments
+import serialmanager
 
 
 phaseA = 0
@@ -15,6 +17,7 @@ phaseC = 0
 
 
 USE_INSTRUMENT = False
+
 
 if USE_INSTRUMENT:
     rm = pyvisa.ResourceManager()
@@ -41,6 +44,12 @@ if USE_INSTRUMENT:
     my_instrument.write('SOUR:FREQ 400')
 
     my_instrument.write('OUTP OFF')
+
+if instruments.USE_INSTRUMENT2:
+    ################################## DMM #####################################
+    rm = pyvisa.ResourceManager()
+    dmm = rm.open_resource("GPIB0::23::INSTR")
+
 
 
 class Worker(QObject):
@@ -145,6 +154,7 @@ class Pacific(QMainWindow):
         self.voltageA = 0
         self.voltageB = 0
         self.voltageC = 0
+        self.voltageAverage = 0
 
         self.phaseAVoltageReading = QLabel(f"Phase A Voltage: {self.voltageA} V   ")
         self.phaseAVoltageReading.setStyleSheet("QLabel { font-size: 24px; }")
@@ -320,8 +330,27 @@ class Pacific(QMainWindow):
 
         self.middleLayout.addLayout(self.voltageLayout)
 
+        averagespacer = QSpacerItem(0, 50)
+        self.middleLayout.addSpacerItem(averagespacer)
+
         middlespacer = QSpacerItem(0, 50)
-        self.middleLayout.addSpacerItem(middlespacer)
+        self.voltageLayout.addSpacerItem(middlespacer)
+
+        self.voltageAverageLayout = QHBoxLayout()
+
+        self.phaseVoltageAverageReading = QLabel(f"Phase Voltage Average: {self.voltageAverage} V   ")
+        self.phaseVoltageAverageReading.setStyleSheet("QLabel { font-size: 18px; }")
+        self.phaseVoltageAverageReading.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.voltageAverageLayout.addWidget(self.phaseVoltageAverageReading)
+
+        self.voltageAverageButton = QPushButton("Average")
+        self.voltageAverageButton.setStyleSheet(""
+                                                "background-color: rgb(0, 200, 50);"
+                                                "color: rgb(255, 255, 255);")
+        self.voltageAverageButton.clicked.connect(self.TakeVoltageAverage)
+        self.voltageAverageLayout.addWidget(self.voltageAverageButton)
+
+        self.voltageLayout.addLayout(self.voltageAverageLayout)
 
         self.testStandClassificationLayout = QHBoxLayout()
 
@@ -373,6 +402,7 @@ class Pacific(QMainWindow):
         self.rightLayout.addWidget(self.frequencyLabel)
 
         self.frequency = 0
+        self.frequencyAverageValue = 0
 
         self.frequencyLayout = QHBoxLayout()
 
@@ -393,6 +423,20 @@ class Pacific(QMainWindow):
 
 
         self.rightLayout.addLayout(self.frequencyLayout)
+
+        self.frequencyAverageLayout = QHBoxLayout()
+
+        self.currentAverageFrequency = QLabel(f"Average Frequency: {self.frequencyAverageValue} Hz   ")
+        self.frequencyAverageLayout.addWidget(self.currentAverageFrequency)
+
+        self.confirmAverageFrequency = QPushButton("Average")
+        self.confirmAverageFrequency.setStyleSheet(""
+                                                   "background-color: rgb(0, 200, 50);"
+                                                   "color: rgb(255, 255, 255);")
+        self.confirmAverageFrequency.clicked.connect(self.FrequencyAverage)
+        self.frequencyAverageLayout.addWidget(self.confirmAverageFrequency)
+        self.rightLayout.addLayout(self.frequencyLayout)
+        self.rightLayout.addLayout(self.frequencyAverageLayout)
 
 
 
@@ -439,6 +483,50 @@ class Pacific(QMainWindow):
             self.instrument.ch1.connect(self.show_current1)
             self.instrument.ch2.connect(self.show_current2)
             self.instrument.ch3.connect(self.show_current3)
+
+    def TakeVoltageAverage(self):
+        self.voltageValues = []
+        self.voltageMean = 0.0
+        if instruments.USE_INSTRUMENT2:
+            try:
+                for i in range(40):
+                    dmm.write("F2R1")
+                    self.voltageAverage = dmm.read("F2R1\r\n")
+                    print(self.voltageAverage)
+                    self.voltageValues.append(self.voltageAverage)
+                    print(self.voltageValues[0])
+                for i in range(len(self.voltageValues)):
+                    self.voltageMean += float(self.voltageValues[i])
+                    print(self.voltageMean)
+                    print(len(self.voltageValues))
+                self.voltageMean /= len(self.voltageValues)
+                self.phaseVoltageAverageReading.setText(f"Phase Voltage Average: {self.voltageMean:.3f} V   ")
+            except Exception as e:
+                print(f"error as {e}")
+        print("Rolling voltage average.")
+
+    def FrequencyAverage(self):
+        self.frequencyValues = []
+        self.frequencyMean = 0
+        if instruments.USE_INSTRUMENT3:
+            try:
+                self.frequencyMean = 0.0
+                for i in range(20):
+                    data = serialmanager.ser.read_until(b'\r')
+                    value = data.strip()
+                    print(value)
+                    if not value:
+                        continue
+                    reading = float(value)
+                    self.frequencyValues.append(reading)
+                if self.frequencyValues:
+                    self.frequencyMean = sum(self.frequencyValues) / len(self.frequencyValues)
+                    self.currentAverageFrequency.setText(
+                        f"Average Frequency: {self.frequencyMean:.2f} Hz"
+                    )
+
+            except Exception as e:
+                print(f"error as {e}")
 
     def PhaseACurrentAverage(self):
         measuredCurrents = []

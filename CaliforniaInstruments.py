@@ -1,16 +1,15 @@
 import sys
-import time
 
-import serial
-
-
-import PyQt6
 import pyvisa
 from PyQt6.QtCore import pyqtSignal, Qt, QObject, pyqtSlot
-from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QApplication, QPushButton, QHBoxLayout, \
-    QSpacerItem, QLineEdit, QSizePolicy
+from PyQt6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QPushButton, QHBoxLayout, \
+    QSpacerItem, QLineEdit
 
 from California_InstrumentWorker import CaliforniaInstrumentWorker
+
+import instruments
+import serialmanager
+
 
 
 phaseA = 0
@@ -19,8 +18,7 @@ phaseC = 0
 
 
 USE_INSTRUMENT1 = False
-USE_INSTRUMENT2 = True
-USE_INSTRUMENT3 = True
+
 
 if USE_INSTRUMENT1:
     rm = pyvisa.ResourceManager()
@@ -48,14 +46,12 @@ if USE_INSTRUMENT1:
 
     ps.write('OUTP OFF')
 
-if USE_INSTRUMENT2:
+if instruments.USE_INSTRUMENT2:
     ################################## DMM #####################################
     rm = pyvisa.ResourceManager()
     dmm = rm.open_resource("GPIB0::23::INSTR")
 
-if USE_INSTRUMENT3:
-    ################################ Frequency Counter #########################
-    ser = serial.Serial("COM3", 9600, timeout=1)
+
 
 
 
@@ -67,8 +63,6 @@ class Worker(QObject):
     status = pyqtSignal(str)
 
 class California(QMainWindow):
-
-
     def __init__(self, instrument_worker: CaliforniaInstrumentWorker):
         super().__init__()
 
@@ -492,19 +486,21 @@ class California(QMainWindow):
 
     def TakeVoltageAverage(self):
         self.voltageValues = []
-        self.voltageMean = 0
-        if USE_INSTRUMENT2:
+        self.voltageMean = 0.0
+        if instruments.USE_INSTRUMENT2:
             try:
                 for i in range(40):
-                    self.voltageAverage = dmm.write("F2R5N1")
+                    dmm.write("F2R1")
+                    self.voltageAverage = dmm.read("F2R1\r\n")
+                    print(self.voltageAverage)
                     self.voltageValues.append(self.voltageAverage)
-                    time.sleep(0.5)
-                    print(f"Counter: {i}")
+                    print(self.voltageValues[0])
                 for i in range(len(self.voltageValues)):
-                    self.voltageMean += self.voltageValues[i]
+                    self.voltageMean += float(self.voltageValues[i])
+                    print(self.voltageMean)
+                    print(len(self.voltageValues))
                 self.voltageMean /= len(self.voltageValues)
-                print(f"Voltage mean complete: {self.voltageMean}")
-                self.phaseVoltageAverageReading.setText(f"Phase Voltage Average: {self.voltageMean} V   ")
+                self.phaseVoltageAverageReading.setText(f"Phase Voltage Average: {self.voltageMean:.3f} V   ")
             except Exception as e:
                 print(f"error as {e}")
         print("Rolling voltage average.")
@@ -512,27 +508,20 @@ class California(QMainWindow):
     def FrequencyAverage(self):
         self.frequencyValues = []
         self.frequencyMean = 0
-        if USE_INSTRUMENT3:
+        if instruments.USE_INSTRUMENT3:
             try:
                 self.frequencyMean = 0.0
-
                 for i in range(20):
-                    data = ser.read_until(b'\r')
+                    data = serialmanager.ser.read_until(b'\r')
                     value = data.strip()
                     if not value:
                         continue
                     reading = float(value)
                     self.frequencyValues.append(reading)
-                    print(f"Reading {i + 1}: {reading}")
-                    print(f"Counter: {i}")
-
                 if self.frequencyValues:
                     self.frequencyMean = sum(self.frequencyValues) / len(self.frequencyValues)
-
-                    print(f"Frequency mean complete: {self.frequencyMean}")
-
                     self.currentAverageFrequency.setText(
-                        f"Average Frequency: {self.frequencyMean:.4f} Hz"
+                        f"Average Frequency: {self.frequencyMean:.2f} Hz"
                     )
 
             except Exception as e:
