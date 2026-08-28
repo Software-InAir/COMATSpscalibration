@@ -60,6 +60,21 @@ Root: HKLM; \
     ValueData: "{#AppVersion}"; \
     Flags: uninsdeletekey
 
+name: Debug installer files
+    shell: cmd
+    run: |
+      echo Current directory:
+      cd
+      echo.
+      echo Repository contents:
+      dir
+      echo.
+      echo All ISS files:
+      dir /s /b *.iss
+      echo.
+      echo All EXE files:
+      dir /s /b *.exe
+
 [Run]
 
 
